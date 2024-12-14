@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body {
+        font-family: 'Arial', sans-serif;
+        background-color: #f7f7f7;
+        margin: 0;
+        padding: 0;
+      }
+
+      .container {
+        max-width: 500px;
+        margin: 50px auto;
+        background: #ffffff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      h2 {
+        text-align: center;
+        margin-bottom: 20px;
+        color: #333;
+      }
+
+      label {
+        font-weight: bold;
+        margin-top: 10px;
+        display: block;
+        color: #555;
+      }
+
+      input, button {
+        width: 100%;
+        padding: 10px;
+        margin: 10px 0;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        box-sizing: border-box;
+      }
+
+      input:focus {
+        border-color: #4CAF50;
+        outline: none;
+      }
+
+      .autocomplete-suggestions {
+        position: absolute;
+        background: white;
+        border: 1px solid #ccc;
+        max-height: 150px;
+        overflow-y: auto;
+        z-index: 1000;
+        width: calc(100% - 20px);
+        display: none;
+      }
+
+      .autocomplete-suggestions div {
+        padding: 10px;
+        cursor: pointer;
+      }
+
+      .autocomplete-suggestions div:hover {
+        background: #f0f0f0;
+      }
+
+      button {
+        background-color: #4CAF50;
+        color: white;
+        font-weight: bold;
+        cursor: pointer;
+        border: none;
+      }
+
+      button:hover {
+        background-color: #45a049;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Stock Opname Form</h2>
+      <form id="stockForm">
+        <!-- First Input Form -->
+        <div>
+          <label for="existingProductName">Product Name According to Existing Data</label>
+          <input type="text" id="existingProductName" name="existingProductName" autocomplete="off">
+          <div id="suggestions" class="autocomplete-suggestions"></div>
+        </div>
+
+        <!-- Second Input Form -->
+        <div>
+          <label for="newProductName">Product Name That Are Not Listed on Existing Data</label>
+          <input type="text" id="newProductName" name="newProductName">
+        </div>
+
+        <!-- Third Input Form -->
+        <div>
+          <label for="jumlahItems">Jumlah Items</label>
+          <input type="number" id="jumlahItems" name="jumlahItems">
+        </div>
+
+        <!-- Submit Button -->
+        <button type="submit">Submit</button>
+      </form>
+    </div>
+
+    <script>
+      let productNames = [];
+
+      // Fetch product names for auto-suggest
+      function fetchProductNames() {
+        google.script.run.withSuccessHandler((data) => {
+          productNames = data;
+        }).fetchProductNames();
+      }
+
+      // Show all suggestions
+      function showAllSuggestions(suggestionsDiv, input) {
+        suggestionsDiv.innerHTML = "";
+
+        productNames.forEach((name) => {
+          const suggestion = document.createElement("div");
+          suggestion.textContent = name;
+          suggestion.addEventListener("click", () => {
+            input.value = name; // Set the clicked suggestion
+            suggestionsDiv.innerHTML = ""; // Clear suggestions
+            suggestionsDiv.style.display = "none"; // Hide dropdown
+          });
+          suggestionsDiv.appendChild(suggestion);
+        });
+
+        suggestionsDiv.style.display = "block"; // Show dropdown
+      }
+
+      // Show filtered suggestions
+      function showFilteredSuggestions(query, suggestionsDiv, input) {
+        suggestionsDiv.innerHTML = "";
+
+        const filtered = productNames.filter((name) =>
+          name.toLowerCase().includes(query)
+        );
+
+        if (filtered.length > 0) {
+          filtered.forEach((name) => {
+            const suggestion = document.createElement("div");
+            suggestion.textContent = name;
+            suggestion.addEventListener("click", () => {
+              input.value = name; // Set the clicked suggestion
+              suggestionsDiv.innerHTML = ""; // Clear suggestions
+              suggestionsDiv.style.display = "none"; // Hide dropdown
+            });
+            suggestionsDiv.appendChild(suggestion);
+          });
+        } else {
+          suggestionsDiv.innerHTML = "<div>No matches found</div>";
+        }
+
+        suggestionsDiv.style.display = "block"; // Show dropdown
+      }
+
+      // Show suggestions when the input is clicked or typed into
+      function setupSuggestions() {
+        const input = document.getElementById("existingProductName");
+        const suggestionsDiv = document.getElementById("suggestions");
+
+        // Show all suggestions when input is clicked
+        input.addEventListener("focus", () => {
+          showAllSuggestions(suggestionsDiv, input);
+        });
+
+        // Show filtered suggestions as the user types
+        input.addEventListener("input", () => {
+          const query = input.value.toLowerCase();
+          if (query.length > 0) {
+            showFilteredSuggestions(query, suggestionsDiv, input);
+          } else {
+            showAllSuggestions(suggestionsDiv, input);
+          }
+        });
+      }
+
+      // Hide dropdown when clicking outside
+      document.addEventListener("click", (event) => {
+        const input = document.getElementById("existingProductName");
+        const suggestionsDiv = document.getElementById("suggestions");
+
+        if (!input.contains(event.target) && !suggestionsDiv.contains(event.target)) {
+          suggestionsDiv.style.display = "none";
+        }
+      });
+
+      // Submit form data to Google Apps Script
+      document.getElementById("stockForm").addEventListener("submit", (e) => {
+        e.preventDefault(); // Prevent default form submission
+
+        // Collect form data
+        const formData = {
+          existingProductName: document.getElementById("existingProductName").value,
+          newProductName: document.getElementById("newProductName").value,
+          jumlahItems: document.getElementById("jumlahItems").value,
+        };
+
+        // Submit data to Google Apps Script
+        google.script.run.withSuccessHandler(() => {
+          alert("Form submitted successfully!");
+          document.getElementById("stockForm").reset(); // Reset form
+        }).submitFormData(formData);
+      });
+
+      // Load product names when the page loads
+      window.onload = () => {
+        fetchProductNames();
+        setupSuggestions();
+      };
+    </script>
+  </body>
+</html>
